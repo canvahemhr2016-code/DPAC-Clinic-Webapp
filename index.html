@@ -1,0 +1,1744 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DPAC Management System</title>
+  
+  <!-- Bootstrap 5 & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  
+  <!-- Chart.js & SheetJS -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&family=Sarabun:wght@300;400;500;600&display=swap');
+    
+    body { background-color: #f0f2f5; font-family: 'Sarabun', Tahoma, sans-serif; overflow-x: hidden; }
+    h1, h2, h3, h4, h5, h6, .font-kanit { font-family: 'Kanit', sans-serif; }
+
+    /* ================= AUTHENTICATION VIEW ================= */
+    #auth-view { height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0d6efd 0%, #20c997 100%); }
+    .auth-card { background: #fff; padding: 40px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); width: 100%; max-width: 450px; }
+    .auth-switch { color: #0d6efd; cursor: pointer; text-decoration: underline; }
+
+    /* ================= MAIN APP LAYOUT ================= */
+    #app-view { display: flex; min-height: 100vh; }
+    
+    /* Sidebar */
+    .sidebar { width: 260px; background-color: #ffffff; border-right: 1px solid #e0e0e0; position: fixed; height: 100vh; display: flex; flex-direction: column; z-index: 1000; box-shadow: 2px 0 10px rgba(0,0,0,0.05); }
+    .sidebar-header { padding: 25px 20px; text-align: center; border-bottom: 1px solid #f0f0f0; background: linear-gradient(135deg, #0d6efd 0%, #20c997 100%); color: white; }
+    .sidebar-menu { flex-grow: 1; padding: 20px 0; overflow-y: auto; }
+    .menu-item { padding: 12px 25px; display: flex; align-items: center; color: #5a5c69; font-size: 1.05rem; cursor: pointer; transition: all 0.2s; font-family: 'Kanit', sans-serif; }
+    .menu-item i { margin-right: 15px; font-size: 1.2rem; }
+    .menu-item:hover, .menu-item.active { background-color: #f8f9fc; color: #0d6efd; border-right: 4px solid #0d6efd; font-weight: 500; }
+    .sidebar-footer { padding: 20px; border-top: 1px solid #f0f0f0; }
+
+    /* Main Content */
+    .main-content { margin-left: 260px; flex-grow: 1; padding: 30px; width: calc(100% - 260px); }
+    .page-section { display: none; animation: fadeIn 0.4s; }
+    .page-section.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ================= COMPONENTS ================= */
+    .dashboard-header { background: #fff; padding: 20px 30px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+    .card { border: 1px solid #e3e6f0; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.02); margin-bottom: 20px; background-color: #ffffff; }
+    
+    .kpi-box { display: flex; align-items: center; justify-content: space-between; padding: 20px; }
+    .kpi-text h6 { color: #858796; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
+    .kpi-text h2 { font-weight: 700; margin-bottom: 0; color: #5a5c69; }
+    .kpi-icon { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; opacity: 0.9; color: white; }
+    .bg-gradient-primary { background: linear-gradient(180deg, #4e73df 10%, #224abe 100%); }
+    .bg-gradient-success { background: linear-gradient(180deg, #1cc88a 10%, #13855c 100%); }
+    .bg-gradient-info { background: linear-gradient(180deg, #36b9cc 10%, #258391 100%); }
+    .bg-gradient-warning { background: linear-gradient(180deg, #f6c23e 10%, #dda20a 100%); }
+
+    .chart-container { position: relative; height: 300px; width: 100%; padding: 10px; }
+    .chart-container-sm { position: relative; height: 250px; width: 100%; padding: 10px; }
+    .chart-container-lg { position: relative; height: 450px; width: 100%; padding: 10px; }
+    .section-title { font-size: 1.15rem; color: #4e73df; font-weight: 600; border-bottom: 2px solid #eaecf4; padding-bottom: 10px; margin-top: 25px; margin-bottom: 15px; font-family: 'Kanit', sans-serif; }
+    
+    /* Report Dashboard Styling */
+    .report-card-title { font-family: 'Kanit', sans-serif; font-weight: 600; color: #2e3a59; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; margin-bottom: 15px; }
+    .stats-table th { background-color: #f7fafc; font-family: 'Kanit', sans-serif; font-weight: 500; }
+    .stats-val { font-weight: 600; color: #2d3748; }
+    .badge-report { font-size: 0.85rem; padding: 5px 10px; border-radius: 20px; }
+
+    /* Custom Styles for Search Profile Grid */
+    .profile-item { background-color: #f8f9fc; border: 1px solid #e3e6f0; border-radius: 8px; padding: 12px 15px; height: 100%; }
+    .profile-label { font-family: 'Kanit', sans-serif; font-weight: 600; color: #4e73df; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 3px; display: block; }
+    .profile-value { font-size: 1rem; color: #5a5c69; font-weight: 500; }
+  </style>
+</head>
+<body>
+
+  <!-- ================= AUTHENTICATION VIEW ================= -->
+  <div id="auth-view">
+    <!-- Login Form -->
+    <div class="auth-card" id="login-form">
+      <div class="text-center mb-4">
+        <h3 class="font-kanit fw-bold text-primary"><i class="bi bi-heart-pulse-fill"></i> DPAC Clinic</h3>
+        <p class="text-muted">เข้าสู่ระบบเพื่อจัดการข้อมูล</p>
+      </div>
+      <div class="mb-3">
+        <label class="form-label font-kanit">ID ผู้ใช้งาน</label>
+        <input type="text" id="loginId" class="form-control" placeholder="กรอกรหัสประจำตัว">
+      </div>
+      <div class="mb-4">
+        <label class="form-label font-kanit">รหัสผ่าน (Password)</label>
+        <input type="password" id="loginPass" class="form-control" placeholder="กรอกรหัสผ่าน">
+      </div>
+      <button class="btn btn-primary w-100 py-2 font-kanit" onclick="login()">เข้าสู่ระบบ</button>
+      <div class="text-center mt-3">
+        <span class="text-muted small">ยังไม่มีบัญชีใช่หรือไม่?</span> <span class="auth-switch font-kanit small fw-bold" onclick="toggleAuth('register')">สมัครใช้งาน</span>
+      </div>
+    </div>
+
+    <!-- Register Form -->
+    <div class="auth-card d-none" id="register-form">
+      <div class="text-center mb-3">
+        <h4 class="font-kanit fw-bold text-success"><i class="bi bi-person-plus-fill"></i> สมัครเข้าใช้งานระบบ</h4>
+      </div>
+      <div class="row">
+        <div class="col-6 mb-2">
+          <label class="form-label small font-kanit">ชื่อ</label>
+          <input type="text" id="regFName" class="form-control form-control-sm">
+        </div>
+        <div class="col-6 mb-2">
+          <label class="form-label small font-kanit">นามสกุล</label>
+          <input type="text" id="regLName" class="form-control form-control-sm">
+        </div>
+      </div>
+      <div class="mb-2">
+        <label class="form-label small font-kanit">ตำแหน่ง</label>
+        <input type="text" id="regPosition" class="form-control form-control-sm">
+      </div>
+      <div class="mb-2">
+        <label class="form-label small font-kanit">ID (ใช้เข้าสู่ระบบ)</label>
+        <input type="text" id="regId" class="form-control form-control-sm">
+      </div>
+      <div class="mb-3">
+        <label class="form-label small font-kanit">รหัสผ่าน</label>
+        <input type="password" id="regPass" class="form-control form-control-sm">
+      </div>
+      <button class="btn btn-success w-100 py-2 font-kanit" onclick="register()">ลงทะเบียน</button>
+      <div class="text-center mt-3">
+        <span class="text-muted small">มีบัญชีอยู่แล้ว?</span> <span class="auth-switch font-kanit small fw-bold" onclick="toggleAuth('login')">กลับไปเข้าสู่ระบบ</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MAIN APP VIEW ================= -->
+  <div id="app-view" class="d-none">
+    
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h4 class="mb-0 fw-bold"><i class="bi bi-heart-pulse"></i> DPAC System</h4>
+        <small id="currentUserRole" class="badge bg-light text-primary mt-1">ผู้ใช้งาน</small>
+      </div>
+      
+      <div class="sidebar-menu">
+        <div class="menu-item active" onclick="navTo('dashboard')"><i class="bi bi-pie-chart-fill"></i> Dashboard (ภาพรวม)</div>
+        <div class="menu-item" onclick="navTo('search')"><i class="bi bi-search"></i> Search (ประวัติคนไข้)</div>
+        <div class="menu-item" onclick="navTo('report')"><i class="bi bi-bar-chart-line-fill"></i> Report (รายงานเฉพาะเจาะจง)</div>
+        <div class="menu-item" onclick="navTo('export')"><i class="bi bi-cloud-arrow-down-fill"></i> Export (ดาวน์โหลด)</div>
+        
+        <!-- เฉพาะ Admin -->
+        <div id="adminMenu" class="d-none">
+          <hr style="margin:10px 20px; border-color:#e0e0e0;">
+          <div class="menu-item text-danger" onclick="navTo('users')"><i class="bi bi-people-fill"></i> User Management</div>
+        </div>
+      </div>
+      
+      <div class="sidebar-footer">
+        <div class="d-flex align-items-center mb-2">
+          <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width:35px; height:35px;"><i class="bi bi-person"></i></div>
+          <div style="line-height: 1.2;">
+            <div class="small fw-bold text-dark font-kanit" id="currentUserName">Name</div>
+            <div class="small text-muted" id="currentUserPos" style="font-size: 0.75rem;">Position</div>
+          </div>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm w-100 font-kanit" onclick="logout()"><i class="bi bi-box-arrow-right"></i> ออกจากระบบ</button>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+      
+      <!-- ================= SECTION 1: DASHBOARD ================= -->
+      <div id="dashboard-sec" class="page-section active">
+        <div class="dashboard-header">
+          <div>
+            <h3 class="font-kanit fw-bold text-primary mb-1">ภาพรวมคลินิก DPAC</h3>
+            <span class="badge bg-light text-secondary border fw-normal"><i class="bi bi-info-circle"></i> 1 HN = 1 คน | ดึงผลล่าสุด</span>
+          </div>
+          <div>
+            <select id="clinicDayFilter" class="form-select shadow-sm border-primary" onchange="renderDashboard()">
+              <option value="All">ข้อมูลทั้งหมด (รวมทุกคลินิก)</option>
+              <option value="No.DPAC วันจันทร์">เฉพาะคลินิกวันจันทร์</option>
+              <option value="No.Dpac วันศุกร์">เฉพาะคลินิกวันศุกร์</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-3"><div class="card"><div class="kpi-box"><div class="kpi-text"><h6>ผู้ป่วยทั้งหมด</h6><h2 id="totalPatients">0</h2></div><div class="kpi-icon bg-gradient-primary"><i class="bi bi-people-fill"></i></div></div></div></div>
+          <div class="col-md-3"><div class="card"><div class="kpi-box"><div class="kpi-text"><h6>เพศชาย</h6><h2 id="totalMale">0</h2></div><div class="kpi-icon bg-gradient-info"><i class="bi bi-gender-male"></i></div></div></div></div>
+          <div class="col-md-3"><div class="card"><div class="kpi-box"><div class="kpi-text"><h6>เพศหญิง</h6><h2 id="totalFemale">0</h2></div><div class="kpi-icon" style="background: linear-gradient(180deg, #e83e8c 10%, #b3165b 100%);"><i class="bi bi-gender-female"></i></div></div></div></div>
+          <div class="col-md-3"><div class="card"><div class="kpi-box"><div class="kpi-text"><h6>BMI ปกติ (&lt; 23)</h6><h2 id="totalNormalBmi">0</h2></div><div class="kpi-icon bg-gradient-success"><i class="bi bi-heart-pulse-fill"></i></div></div></div></div>
+        </div>
+
+        <div class="section-title">ข้อมูลประชากร และเศรษฐานะ</div>
+        <div class="row">
+          <div class="col-md-4"><div class="card p-3"><div class="chart-container"><canvas id="genderChart"></canvas></div></div></div>
+          <div class="col-md-4"><div class="card p-3"><div class="chart-container"><canvas id="ageChart"></canvas></div></div></div>
+          <div class="col-md-4"><div class="card p-3"><div class="chart-container"><canvas id="diseaseChart"></canvas></div></div></div>
+          <div class="col-md-4"><div class="card p-3"><div class="chart-container"><canvas id="educationChart"></canvas></div></div></div>
+          <div class="col-md-4"><div class="card p-3"><div class="chart-container"><canvas id="occupationChart"></canvas></div></div></div>
+          <div class="col-md-4"><div class="card p-3"><div class="chart-container"><canvas id="scoreChart"></canvas></div></div></div>
+        </div>
+
+        <div class="section-title">ผลการประเมินรูปร่าง สัญญาณชีพ และ Lab (ล่าสุด)</div>
+        <div class="row">
+          <div class="col-md-3"><div class="card p-3"><div class="chart-container-sm"><canvas id="bmiChart"></canvas></div></div></div>
+          <div class="col-md-3"><div class="card p-3"><div class="chart-container-sm"><canvas id="bpChart"></canvas></div></div></div>
+          <div class="col-md-3"><div class="card p-3"><div class="chart-container-sm"><canvas id="waistMaleChart"></canvas></div></div></div>
+          <div class="col-md-3"><div class="card p-3"><div class="chart-container-sm"><canvas id="waistFemaleChart"></canvas></div></div></div>
+        </div>
+        <div class="row">
+          <div class="col-md-3"><div class="card p-3"><div class="chart-container-sm"><canvas id="fbsChart"></canvas></div></div></div>
+          <div class="col-md-3"><div class="card p-3"><div class="chart-container-sm"><canvas id="hba1cChart"></canvas></div></div></div>
+          <div class="col-md-3"><div class="card p-3"><div class="chart-container-sm"><canvas id="cholChart"></canvas></div></div></div>
+          <div class="col-md-3"><div class="card p-3"><div class="chart-container-sm"><canvas id="tgChart"></canvas></div></div></div>
+          <div class="col-md-4"><div class="card p-3"><div class="chart-container-sm"><canvas id="hdlChart"></canvas></div></div></div>
+          <div class="col-md-4"><div class="card p-3"><div class="chart-container-sm"><canvas id="ldlChart"></canvas></div></div></div>
+          <div class="col-md-4"><div class="card p-3"><div class="chart-container-sm"><canvas id="egfrChart"></canvas></div></div></div>
+        </div>
+      </div>
+
+      <!-- ================= SECTION 2: SEARCH ================= -->
+      <div id="search-sec" class="page-section">
+        <h3 class="font-kanit fw-bold text-primary mb-4">ค้นหาประวัติการรับบริการของคนไข้</h3>
+        <div class="card p-4 shadow-sm">
+          <div class="input-group mb-4" style="max-width: 600px;">
+            <span class="input-group-text bg-primary text-white"><i class="bi bi-search"></i></span>
+            <input type="text" id="searchHN" class="form-control" placeholder="กรอกรหัส HN คนไข้ (เช่น 251110)...">
+            <button class="btn btn-primary font-kanit" onclick="searchPatient()">ค้นหา</button>
+          </div>
+          
+          <div id="patientProfile" class="d-none">
+            <div class="section-title mt-0"><i class="bi bi-person-badge-fill text-primary"></i> ข้อมูลล่าสุด (Last Visit)</div>
+            <div class="bg-white p-2 rounded mb-4" id="latestInfo">
+              <!-- ข้อมูลผู้ป่วยล่าสุด 9 รายการจะประมวลผลที่นี่ -->
+            </div>
+            
+            <div class="section-title"><i class="bi bi-clock-history text-primary"></i> ประวัติการมารับบริการ (เรียงจากล่าสุด)</div>
+            <div class="table-responsive">
+              <table class="table table-hover table-bordered table-sm text-center align-middle bg-white">
+                <thead class="table-light font-kanit text-primary" id="historyHead"></thead>
+                <tbody id="historyBody" style="font-size: 0.95rem;"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= SECTION 3: REPORT (SPECIFIC/CUSTOM) ================= -->
+      <div id="report-sec" class="page-section">
+        <div class="row mb-4">
+          <div class="col-lg-8">
+            <h3 class="font-kanit fw-bold text-primary mb-1">รายงานสรุปผล DPAC Clinic แบบระบุเจาะจง</h3>
+            <p class="text-muted">วิเคราะห์ข้อมูลเชิงสถิติ (Mean, S.D., Min, Max, % ประสิทธิภาพ) ตามกรอบช่วงเวลาทางด้านขวา</p>
+          </div>
+          
+          <div class="col-lg-4">
+            <div class="card shadow-sm border-primary">
+              <div class="card-header bg-primary text-white py-2">
+                <h6 class="mb-0 font-kanit"><i class="bi bi-calendar3"></i> ตัวกรองข้อมูลรายงาน</h6>
+              </div>
+              <div class="card-body p-3">
+                <div class="mb-2">
+                  <label class="form-label small fw-bold font-kanit">รูปแบบการกรอง</label>
+                  <select id="repFilterMode" class="form-select form-select-sm" onchange="toggleReportFilterFields()">
+                    <option value="range">เลือกแบบระบุช่วงวัน</option>
+                    <option value="month">เลือกแบบรายเดือน</option>
+                    <option value="year">เลือกแบบรายปี พ.ศ.</option>
+                  </select>
+                </div>
+                
+                <div id="repFieldRange" class="row g-2 mb-3">
+                  <div class="col-6">
+                    <label class="form-label small text-muted">ตั้งแต่วันที่</label>
+                    <input type="date" id="repStartDate" class="form-control form-control-sm">
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label small text-muted">ถึงวันที่</label>
+                    <input type="date" id="repEndDate" class="form-control form-control-sm">
+                  </div>
+                </div>
+                
+                <div id="repFieldMonth" class="mb-3 d-none">
+                  <label class="form-label small text-muted">เลือกเดือนที่ต้องการ</label>
+                  <input type="month" id="repMonthSelect" class="form-control form-control-sm">
+                </div>
+                
+                <div id="repFieldYear" class="mb-3 d-none">
+                  <label class="form-label small text-muted">เลือกปี พ.ศ. (พุทธศักราช)</label>
+                  <select id="repYearSelect" class="form-select form-select-sm">
+                    <!-- เติมปีด้วย JS -->
+                  </select>
+                </div>
+                
+                <button class="btn btn-primary btn-sm w-100 font-kanit fw-bold py-2 shadow-sm" onclick="generateCustomReport()">
+                  <i class="bi bi-funnel"></i> ประมวลผลและสร้างรายงาน
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="customReportResult" class="d-none">
+          <div class="alert alert-success py-2 px-3 mb-4 d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-check-circle-fill"></i> ประมวลผลเรียบร้อย: พบข้อมูลผู้ป่วยที่เข้าเกณฑ์ในช่วงเวลา <strong id="reportActivePeriod"></strong> ทั้งหมด <strong id="reportPatientCount">0</strong> คน</span>
+            <button class="btn btn-outline-success btn-sm font-kanit" onclick="exportCustomReportToExcel()"><i class="bi bi-file-earmark-excel"></i> ดาวน์โหลดข้อมูลชุดนี้</button>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-4">
+              <div class="card h-100 p-4">
+                <h5 class="report-card-title"><i class="bi bi-people-fill text-primary"></i> 1. ข้อมูลเพศ และ 2. ที่อยู่</h5>
+                
+                <div class="mb-3">
+                  <h6 class="fw-bold text-secondary font-kanit">สัดส่วนเพศ</h6>
+                  <div class="d-flex justify-content-around bg-light py-2 rounded mb-3">
+                    <div class="text-center">
+                      <span class="small text-muted">เพศชาย</span>
+                      <h4 id="repGenderMale" class="mb-0 text-primary fw-bold">0 คน (0.0%)</h4>
+                    </div>
+                    <div class="text-center">
+                      <span class="small text-muted">เพศหญิง</span>
+                      <h4 id="repGenderFemale" class="mb-0 text-danger fw-bold">0 คน (0.0%)</h4>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h6 class="fw-bold text-secondary font-kanit">สัดส่วนที่อยู่ (จำแนกตามเขต)</h6>
+                  <table class="table table-bordered stats-table text-center table-sm">
+                    <thead>
+                      <tr>
+                        <th>กลุ่มที่อยู่</th>
+                        <th>จำนวนผู้ป่วย (จำนวน, ร้อยละ)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="text-start">ในเขต อ.เมืองนครราชสีมา</td>
+                        <td id="repAddrMueang" class="stats-val">0 คน (0.0%)</td>
+                      </tr>
+                      <tr>
+                        <td class="text-start">นอกเขต อ.เมืองนครราชสีมา</td>
+                        <td id="repAddrOutside" class="stats-val">0 คน (0.0%)</td>
+                      </tr>
+                      <tr>
+                        <td class="text-start">ต่างจังหวัด</td>
+                        <td id="repAddrOther" class="stats-val">0 คน (0.0%)</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+              <div class="card h-100 p-4">
+                <h5 class="report-card-title"><i class="bi bi-rulers text-primary"></i> 3. ข้อมูลน้ำหนัก และ 4. ส่วนสูง</h5>
+                <table class="table table-bordered stats-table text-center table-sm my-auto">
+                  <thead>
+                    <tr>
+                      <th>ข้อมูลทางกายภาพ</th>
+                      <th>ต่ำสุด (Min)</th>
+                      <th>สูงสุด (Max)</th>
+                      <th>ค่าเฉลี่ย (Mean)</th>
+                      <th>ส่วนเบี่ยงเบนมาตรฐาน (S.D.)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="fw-bold text-start">น้ำหนัก (กิโลกรัม)</td>
+                      <td id="repWeightMin" class="stats-val">-</td>
+                      <td id="repWeightMax" class="stats-val">-</td>
+                      <td id="repWeightMean" class="stats-val text-primary">-</td>
+                      <td id="repWeightSD" class="stats-val">-</td>
+                    </tr>
+                    <tr>
+                      <td class="fw-bold text-start">ส่วนสูง (เซนติเมตร)</td>
+                      <td id="repHeightMin" class="stats-val">-</td>
+                      <td id="repHeightMax" class="stats-val">-</td>
+                      <td id="repHeightMean" class="stats-val text-primary">-</td>
+                      <td id="repHeightSD" class="stats-val">-</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-4">
+              <div class="card h-100 p-4">
+                <h5 class="report-card-title"><i class="bi bi-calculator text-primary"></i> 5. ค่าดัชนีมวลกาย BMI (ล่าสุด)</h5>
+                <ul class="list-group list-group-flush">
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>BMI 23.0 - 24.9 (น้ำหนักเกิน)</span>
+                    <span id="repBmiOverweight" class="badge bg-warning text-dark badge-report">0 คน (0.0%)</span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>BMI 25.0 - 29.9 (โรคอ้วนระดับ 1)</span>
+                    <span id="repBmiObese1" class="badge bg-danger badge-report">0 คน (0.0%)</span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>BMI 30.0 - 34.9 (โรคอ้วนระดับ 2)</span>
+                    <span id="repBmiObese2" class="badge bg-danger badge-report" style="background-color: #b3165b !important;">0 คน (0.0%)</span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>BMI &gt;= 35.0 (โรคอ้วนขั้นวิกฤต)</span>
+                    <span id="repBmiObeseExtreme" class="badge bg-dark badge-report">0 คน (0.0%)</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+              <div class="card h-100 p-4">
+                <h5 class="report-card-title"><i class="bi bi-heart-pulse-fill text-primary"></i> 6. ค่าความดันโลหิต (ล่าสุด)</h5>
+                <div class="row text-center my-auto">
+                  <div class="col-6 mb-3 border-end">
+                    <h6 class="fw-bold text-muted font-kanit">ความดันโลหิตตัวบน (SBP)</h6>
+                    <div class="p-2 mb-2 bg-light rounded">
+                      <span class="small d-block text-secondary">SBP &lt; 130 mmHg</span>
+                      <strong id="repSbpNormal" class="text-success fs-5">0 คน (0.0%)</strong>
+                    </div>
+                    <div class="p-2 bg-light rounded">
+                      <span class="small d-block text-secondary">SBP &gt;= 130 mmHg</span>
+                      <strong id="repSbpHigh" class="text-danger fs-5">0 คน (0.0%)</strong>
+                    </div>
+                  </div>
+                  <div class="col-6 mb-3">
+                    <h6 class="fw-bold text-muted font-kanit">ความดันโลหิตตัวล่าง (DBP)</h6>
+                    <div class="p-2 mb-2 bg-light rounded">
+                      <span class="small d-block text-secondary">DBP &lt; 80 mmHg</span>
+                      <strong id="repDbpNormal" class="text-success fs-5">0 คน (0.0%)</strong>
+                    </div>
+                    <div class="p-2 bg-light rounded">
+                      <span class="small d-block text-secondary">DBP &gt;= 80 mmHg</span>
+                      <strong id="repDbpHigh" class="text-danger fs-5">0 คน (0.0%)</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card p-4 mb-4">
+            <h5 class="report-card-title"><i class="bi bi-clipboard-data text-primary"></i> 7. ผลการวัด BIA (Bioelectrical Impedance Analysis)</h5>
+            <div class="row">
+              <div class="col-lg-6 border-end">
+                <h6 class="fw-bold text-secondary font-kanit mb-3"><i class="bi bi-person-arms-up"></i> 7.1 มวลกล้ามเนื้อในร่างกาย</h6>
+                <table class="table table-bordered table-sm text-center stats-table">
+                  <thead>
+                    <tr>
+                      <th>ตระกูลกล้ามเนื้อ</th>
+                      <th>ค่าเฉลี่ย (Mean)</th>
+                      <th>กลุ่มตัวอย่างที่บันทึกผล (จำนวน, ร้อยละ)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="text-start">กล้ามเนื้อแขนซ้าย</td>
+                      <td id="repMuscleArmL" class="stats-val">-</td>
+                      <td id="repMuscleArmLCount" class="text-muted small">-</td>
+                    </tr>
+                    <tr>
+                      <td class="text-start">กล้ามเนื้อแขนขวา</td>
+                      <td id="repMuscleArmR" class="stats-val">-</td>
+                      <td id="repMuscleArmRCount" class="text-muted small">-</td>
+                    </tr>
+                    <tr>
+                      <td class="text-start">กล้ามเนื้อขาซ้าย</td>
+                      <td id="repMuscleLegL" class="stats-val">-</td>
+                      <td id="repMuscleLegLCount" class="text-muted small">-</td>
+                    </tr>
+                    <tr>
+                      <td class="text-start">กล้ามเนื้อขาขวา</td>
+                      <td id="repMuscleLegR" class="stats-val">-</td>
+                      <td id="repMuscleLegRCount" class="text-muted small">-</td>
+                    </tr>
+                    <tr class="table-info">
+                      <td class="text-start fw-bold">มวลรวมกล้ามเนื้อ (Mean)</td>
+                      <td id="repMuscleTotalMean" class="stats-val fw-bold text-primary">-</td>
+                      <td id="repMuscleTotalCount" class="small">-</td>
+                    </tr>
+                    <tr class="table-info">
+                      <td class="text-start fw-bold">ส่วนเบี่ยงเบนมาตรฐาน (S.D.)</td>
+                      <td id="repMuscleTotalSD" class="stats-val fw-bold">-</td>
+                      <td class="text-muted">-</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="col-lg-6 ps-lg-4">
+                <h6 class="fw-bold text-secondary font-kanit mb-3"><i class="bi bi-shield-slash-fill"></i> 7.2 - 7.4 มวลไขมันและดัชนีวัดไขมันช่องท้อง</h6>
+                
+                <div class="row g-2 mb-3">
+                  <div class="col-6">
+                    <div class="bg-light p-2 rounded text-center">
+                      <span class="small text-muted d-block">Fat MASS (Mean ± S.D.)</span>
+                      <strong id="repFatMassMeanSD" class="stats-val text-dark">-</strong>
+                      <span id="repFatMassCount" class="d-block small text-secondary"></span>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="bg-light p-2 rounded text-center">
+                      <span class="small text-muted d-block">FAT % (Mean ± S.D.)</span>
+                      <strong id="repFatPctMeanSD" class="stats-val text-dark">-</strong>
+                      <span id="repFatPctCount" class="d-block small text-secondary"></span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="p-3 bg-light rounded mb-2">
+                  <div class="d-flex justify-content-between">
+                    <span class="fw-bold text-muted small">ไขมันในช่องท้อง V Fat เฉลี่ย</span>
+                    <strong id="repVFatMeanSD" class="text-primary">-</strong>
+                  </div>
+                  <div class="text-muted small mb-2" id="repVFatTotalCount"></div>
+                  
+                  <div class="mt-2">
+                    <div class="small mb-1 text-success d-flex justify-content-between">
+                      <span>ปกติ (ค่า &lt; 10)</span>
+                      <strong id="repVFatNormal">0 คน (0.0%)</strong>
+                    </div>
+                    <div class="small mb-1 text-warning d-flex justify-content-between">
+                      <span>เริ่มเสี่ยง (ค่า 10 - 14)</span>
+                      <strong id="repVFatWarning">0 คน (0.0%)</strong>
+                    </div>
+                    <div class="small text-danger d-flex justify-content-between">
+                      <span>เสี่ยงสูง (ค่า &gt;= 15)</span>
+                      <strong id="repVFatDanger">0 คน (0.0%)</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card p-4 mb-4">
+            <h5 class="report-card-title"><i class="bi bi-clipboard-check text-primary"></i> 8. ผลการตรวจตรวจทางห้องปฏิบัติการ LAB</h5>
+            <div class="table-responsive">
+              <table class="table table-bordered table-sm text-center stats-table mb-0">
+                <thead>
+                  <tr>
+                    <th>รายการตรวจ</th>
+                    <th>จำนวนผู้ตรวจ (จำนวน, ร้อยละ)</th>
+                    <th>ค่าเฉลี่ยทางคลินิก (Mean)</th>
+                    <th>ส่วนเบี่ยงเบนมาตรฐาน (S.D.)</th>
+                  </tr>
+                </thead>
+                <tbody id="repLabTableBody">
+                  <tr>
+                    <td class="fw-bold text-start">FBS (Fasting Blood Sugar)</td>
+                    <td id="repLabFBS_count" class="stats-val">-</td>
+                    <td id="repLabFBS_mean" class="stats-val text-primary">-</td>
+                    <td id="repLabFBS_sd" class="stats-val">-</td>
+                  </tr>
+                  <tr>
+                    <td class="fw-bold text-start">HbA1c</td>
+                    <td id="repLabHbA1c_count" class="stats-val">-</td>
+                    <td id="repLabHbA1c_mean" class="stats-val text-primary">-</td>
+                    <td id="repLabHbA1c_sd" class="stats-val">-</td>
+                  </tr>
+                  <tr>
+                    <td class="fw-bold text-start">Chol (Cholesterol)</td>
+                    <td id="repLabChol_count" class="stats-val">-</td>
+                    <td id="repLabChol_mean" class="stats-val text-primary">-</td>
+                    <td id="repLabChol_sd" class="stats-val">-</td>
+                  </tr>
+                  <tr>
+                    <td class="fw-bold text-start">Tg (Triglyceride)</td>
+                    <td id="repLabTg_count" class="stats-val">-</td>
+                    <td id="repLabTg_mean" class="stats-val text-primary">-</td>
+                    <td id="repLabTg_sd" class="stats-val">-</td>
+                  </tr>
+                  <tr>
+                    <td class="fw-bold text-start">HDL</td>
+                    <td id="repLabHDL_count" class="stats-val">-</td>
+                    <td id="repLabHDL_mean" class="stats-val text-primary">-</td>
+                    <td id="repLabHDL_sd" class="stats-val">-</td>
+                  </tr>
+                  <tr>
+                    <td class="fw-bold text-start">LDL</td>
+                    <td id="repLabLDL_count" class="stats-val">-</td>
+                    <td id="repLabLDL_mean" class="stats-val text-primary">-</td>
+                    <td id="repLabLDL_sd" class="stats-val">-</td>
+                  </tr>
+                  <tr>
+                    <td class="fw-bold text-start">Cr (Creatinine)</td>
+                    <td id="repLabCr_count" class="stats-val">-</td>
+                    <td id="repLabCr_mean" class="stats-val text-primary">-</td>
+                    <td id="repLabCr_sd" class="stats-val">-</td>
+                  </tr>
+                  <tr>
+                    <td class="fw-bold text-start">eGFR</td>
+                    <td id="repLabEGFR_count" class="stats-val">-</td>
+                    <td id="repLabEGFR_mean" class="stats-val text-primary">-</td>
+                    <td id="repLabEGFR_sd" class="stats-val">-</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card p-4">
+            <h5 class="report-card-title"><i class="bi bi-award text-primary"></i> 9. ผลการลดน้ำหนัก (เปรียบเทียบจากครั้งแรก vs ครั้งล่าสุดที่มารับบริการ)</h5>
+            <p class="text-muted small">* คำนวณเฉพาะกลุ่มตัวอย่างที่มีข้อมูลการติดตามผลตั้งแต่ 2 ครั้งขึ้นไป (N = <span id="repLossCohortCount">0</span> คน)</p>
+            
+            <div class="row text-center">
+              <div class="col-md-2 mb-2">
+                <div class="p-3 bg-light rounded h-100">
+                  <span class="d-block small text-muted">น้ำหนักเท่าเดิม</span>
+                  <strong id="repLossNoChange" class="fs-5 text-secondary">-</strong>
+                </div>
+              </div>
+              <div class="col-md-2 mb-2">
+                <div class="p-3 bg-light rounded h-100">
+                  <span class="d-block small text-muted">น้ำหนักเพิ่มขึ้น</span>
+                  <strong id="repLossGain" class="fs-5 text-danger">-</strong>
+                </div>
+              </div>
+              <div class="col-md-2 mb-2">
+                <div class="p-3 bg-light rounded h-100 border-start border-3 border-success">
+                  <span class="d-block small text-muted">น้ำหนักลด &lt; 3.00%</span>
+                  <strong id="repLossL3" class="fs-5 text-success">-</strong>
+                </div>
+              </div>
+              <div class="col-md-2 mb-2">
+                <div class="p-3 bg-success bg-opacity-10 rounded h-100 border-start border-3 border-success">
+                  <span class="d-block small text-muted">น้ำหนักลด 3.00 - 4.99%</span>
+                  <strong id="repLoss3to5" class="fs-5 text-success">-</strong>
+                </div>
+              </div>
+              <div class="col-md-2 mb-2">
+                <div class="p-3 bg-success bg-opacity-25 rounded h-100 border-start border-3 border-success font-kanit">
+                  <span class="d-block small text-muted font-kanit fw-bold">น้ำหนักลด 5.00 - 9.99%</span>
+                  <strong id="repLoss5to10" class="fs-4 text-success fw-bold">-</strong>
+                </div>
+              </div>
+              <div class="col-md-2 mb-2">
+                <div class="p-3 bg-success text-white rounded h-100 border-start border-3 border-dark font-kanit">
+                  <span class="d-block small text-white-50 font-kanit fw-bold">น้ำหนักลด &gt;= 10.00%</span>
+                  <strong id="repLossG10" class="fs-4 fw-bold text-white">-</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= SECTION 4: EXPORT ================= -->
+      <div id="export-sec" class="page-section">
+        <h3 class="font-kanit fw-bold text-primary mb-4">ดาวน์โหลดฐานข้อมูล</h3>
+        <div class="card p-5 text-center shadow-sm">
+          <div class="mb-4 text-success" style="font-size: 4rem;"><i class="bi bi-file-earmark-excel"></i></div>
+          <h4 class="mb-3 font-kanit">Export Master Patient Data</h4>
+          <p class="text-muted mb-4">ดาวน์โหลดข้อมูลผู้ป่วยแบบจัดระเบียบ (1 HN = 1 แถว พร้อมผล Lab ล่าสุด) ในรูปแบบไฟล์ Excel</p>
+          <div><button class="btn btn-success btn-lg px-5 shadow-sm font-kanit" onclick="exportExcel()"><i class="bi bi-download me-2"></i> ดาวน์โหลด (.xlsx)</button></div>
+        </div>
+      </div>
+
+      <!-- ================= SECTION 5: USER MANAGEMENT (ADMIN) ================= -->
+      <div id="users-sec" class="page-section">
+        <h3 class="font-kanit fw-bold text-danger mb-4"><i class="bi bi-people-fill"></i> ระบบจัดการผู้ใช้งาน (User Management)</h3>
+        <div class="card p-4 shadow-sm">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead class="table-light font-kanit">
+                <tr><th>ID</th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th><th>สถานะ</th><th>จัดการ</th></tr>
+              </thead>
+              <tbody id="userTableBody">
+                <!-- ข้อมูลผู้ใช้จะแสดงตรงนี้ -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <script>
+    // ================= GLOBAL VARIABLES & INIT =================
+    let globalRawData = [];
+    let masterPatients = []; 
+    let charts = {};
+    let currentUser = null;
+
+    Chart.defaults.font.family = "'Sarabun', Tahoma, sans-serif";
+    Chart.defaults.color = '#5a5c69';
+
+    const customTooltip = {
+      callbacks: {
+        label: function(context) {
+          let label = context.dataset.label || context.label || '';
+          if (label && context.dataset.type !== 'bar') label += ': ';
+          let value = context.parsed.y !== undefined ? context.parsed.y : context.parsed;
+          let dataset = context.chart.data.datasets[context.datasetIndex];
+          let total = dataset.data.reduce((a, b) => a + b, 0);
+          let percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
+          return `${label} ${value} คน (${percentage})`;
+        }
+      }
+    };
+
+    window.onload = function() {
+      initUsersDB();
+      checkAuthStatus();
+      populateReportYearSelect();
+      
+      // ดึงข้อมูลผ่าน Apps Script
+      google.script.run.withSuccessHandler(function(jsonString){
+        globalRawData = JSON.parse(jsonString);
+        if(currentUser) renderDashboard(); 
+      }).getDpacData();
+    };
+
+    // แสดงปี พ.ศ. ในตัวกรองรายงานแบบปี
+    function populateReportYearSelect() {
+      let select = document.getElementById('repYearSelect');
+      let currentYearTh = new Date().getFullYear() + 543;
+      select.innerHTML = '';
+      for (let y = currentYearTh; y >= 2550; y--) {
+        let opt = document.createElement('option');
+        opt.value = y;
+        opt.innerText = "ปี พ.ศ. " + y;
+        select.appendChild(opt);
+      }
+    }
+
+    // แสดงฟิลด์วันที่ตามโหมดที่เลือก
+    function toggleReportFilterFields() {
+      let mode = document.getElementById('repFilterMode').value;
+      document.getElementById('repFieldRange').classList.add('d-none');
+      document.getElementById('repFieldMonth').classList.add('d-none');
+      document.getElementById('repFieldYear').classList.add('d-none');
+      
+      if (mode === 'range') {
+        document.getElementById('repFieldRange').classList.remove('d-none');
+      } else if (mode === 'month') {
+        document.getElementById('repFieldMonth').classList.remove('d-none');
+      } else if (mode === 'year') {
+        document.getElementById('repFieldYear').classList.remove('d-none');
+      }
+    }
+
+    // ================= 1. AUTHENTICATION & USER MANAGEMENT =================
+
+    function register() {
+      let fName = document.getElementById('regFName').value.trim();
+      let lName = document.getElementById('regLName').value.trim();
+      let pos = document.getElementById('regPosition').value.trim();
+      let id = document.getElementById('regId').value.trim();
+      let pass = document.getElementById('regPass').value.trim();
+
+      if(!fName || !lName || !id || !pass) return alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+
+      // ส่งข้อมูลไปบันทึกที่ Google Sheets
+      google.script.run
+        .withSuccessHandler((res) => {
+          if (res === "ID_EXISTS") {
+            alert("ID นี้มีผู้ใช้งานแล้ว โปรดเลือก ID อื่น");
+          } else {
+            alert("สมัครสมาชิกสำเร็จ! โปรดรอ Admin อนุมัติการเข้าใช้งาน");
+            toggleAuth('login');
+          }
+        })
+        .saveUserToDatabase({ id, pass, fname: fName, lname: lName, position: pos });
+    }
+
+    function login() {
+      let id = document.getElementById('loginId').value.trim();
+      let pass = document.getElementById('loginPass').value.trim();
+      
+      // ดึงข้อมูลจาก Server มาเช็ค (Admin ต้องดึงมาให้หมดก่อน)
+      google.script.run
+        .withSuccessHandler((users) => {
+          let user = users.find(u => String(u.id) === id && String(u.pass) === pass);
+          
+          if(!user) return alert("ID หรือ รหัสผ่านไม่ถูกต้อง");
+          if(user.status !== 'approved') return alert("บัญชีของคุณอยู่ระหว่างรอการอนุมัติจาก Admin");
+
+          sessionStorage.setItem('dpac_current_user', JSON.stringify(user));
+          checkAuthStatus();
+        })
+        .getAllUsers();
+    }
+
+    function renderUserTable() {
+      if(currentUser.role !== 'admin') return;
+      
+      google.script.run
+        .withSuccessHandler((users) => {
+          let html = '';
+          users.forEach(u => {
+            if(u.id === 'admin') return;
+            let statusBadge = u.status === 'approved' ? '<span class="badge bg-success">อนุมัติแล้ว</span>' : '<span class="badge bg-warning text-dark">รออนุมัติ</span>';
+            let actionBtn = u.status === 'pending' 
+              ? `<button class="btn btn-sm btn-success me-1" onclick="approveUser('${u.id}')">อนุมัติ</button>` 
+              : `<button class="btn btn-sm btn-secondary me-1" disabled>อนุมัติแล้ว</button>`;
+            actionBtn += `<button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}')">ลบ</button>`;
+
+            html += `<tr>
+              <td><b>${u.id}</b></td>
+              <td>${u.fname} ${u.lname}</td>
+              <td>${u.position}</td>
+              <td>${statusBadge}</td>
+              <td>${actionBtn}</td>
+            </tr>`;
+          });
+          document.getElementById('userTableBody').innerHTML = html;
+        })
+        .getAllUsers();
+    }
+
+    function approveUser(id) {
+      google.script.run
+        .withSuccessHandler(() => {
+          alert("อนุมัติผู้ใช้งานเรียบร้อยแล้ว");
+          renderUserTable();
+        })
+        .approveUserInSheet(id);
+    }
+
+    function deleteUser(id) {
+      if(!confirm("คุณแน่ใจหรือไม่ที่จะลบบัญชีผู้ใช้งานนี้?")) return;
+      google.script.run
+        .withSuccessHandler(() => {
+          alert("ลบผู้ใช้งานเรียบร้อยแล้ว");
+          renderUserTable();
+        })
+        .deleteUserInSheet(id);
+    }
+
+    // ฟังก์ชันอื่นๆ ยังคงเดิม (logout, checkAuthStatus, toggleAuth)
+    function logout() {
+      sessionStorage.removeItem('dpac_current_user');
+      checkAuthStatus();
+    }
+
+    // ================= 2. NAVIGATION =================
+    function navTo(pageId) {
+      document.querySelectorAll('.sidebar-menu .menu-item').forEach(el => el.classList.remove('active'));
+      let items = document.querySelectorAll('.sidebar-menu .menu-item');
+      items.forEach(el => {
+        if (el.getAttribute('onclick').includes(pageId)) {
+          el.classList.add('active');
+        }
+      });
+      
+      document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
+      document.getElementById(pageId + '-sec').classList.add('active');
+
+      if(pageId === 'users') renderUserTable();
+      if(pageId === 'dashboard' && globalRawData.length > 0) renderDashboard();
+    }
+
+    // ================= 3. DATA PROCESSING =================
+    function getValidVal(visits, keys) {
+      for (let v of visits) {
+        for (let k of keys) {
+          let val = v[k];
+          if (val !== undefined && val !== null && String(val).trim() !== '' && String(val).trim() !== '99') {
+            return String(val).trim();
+          }
+        }
+      }
+      return '';
+    }
+
+    function formatToThaiDateString(dateVal) {
+      if (!dateVal) return '-';
+      let dateStr = String(dateVal).trim();
+      if (dateStr === "" || dateStr === "-" || dateStr === "99") return '-';
+      
+      let matchISO = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (matchISO) {
+        let y = parseInt(matchISO[1], 10);
+        let m = parseInt(matchISO[2], 10);
+        let d = parseInt(matchISO[3], 10);
+        const thaiMonths = [
+          "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+          "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+        ];
+        let finalYear = y > 2400 ? y : y + 543;
+        return `${d} ${thaiMonths[m - 1]} ${finalYear}`;
+      }
+      
+      let parts = dateStr.split('/');
+      if (parts.length === 3) {
+        let d = parseInt(parts[0], 10);
+        let m = parseInt(parts[1], 10);
+        let y = parseInt(parts[2], 10);
+        if (!isNaN(d) && !isNaN(m) && !isNaN(y)) {
+          if (y < 100) y += 2500;
+          const thaiMonths = [
+            "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+            "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+          ];
+          return `${d} ${thaiMonths[m - 1]} ${y}`;
+        }
+      }
+      
+      let d = new Date(dateStr);
+      if (!isNaN(d.getTime())) {
+        let year = d.getFullYear();
+        if (year < 2400) year += 543;
+        const thaiMonths = [
+          "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+          "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+        ];
+        return `${d.getDate()} ${thaiMonths[d.getMonth()]} ${year}`;
+      }
+      
+      return dateVal;
+    }
+
+    function parseThaiDate(dateInput) {
+      if (!dateInput) return null;
+      if (dateInput instanceof Date) return dateInput;
+      
+      let dateStr = String(dateInput).trim();
+      if (dateStr === "" || dateStr === "-" || dateStr === "99") return null;
+      
+      if (dateStr.includes('-')) {
+        let parsed = new Date(dateStr);
+        if (!isNaN(parsed.getTime())) {
+          if (parsed.getFullYear() > 2400) {
+            parsed.setFullYear(parsed.getFullYear() - 543);
+          }
+          return parsed;
+        }
+      }
+      
+      let parts = dateStr.split('/');
+      if (parts.length === 3) {
+        let d = parseInt(parts[0], 10);
+        let m = parseInt(parts[1], 10);
+        let y = parseInt(parts[2], 10);
+        
+        if (isNaN(d) || isNaN(m) || isNaN(y)) return null;
+        
+        if (y < 100) {
+          if (y > 30) {
+            y += 2500;
+          } else {
+            y += 2000;
+          }
+        }
+        
+        if (y > 2400) {
+          y -= 543;
+        }
+        
+        return new Date(y, m - 1, d);
+      }
+      
+      let parsedFallback = new Date(dateStr);
+      if (!isNaN(parsedFallback.getTime())) {
+        if (parsedFallback.getFullYear() > 2400) {
+          parsedFallback.setFullYear(parsedFallback.getFullYear() - 543);
+        }
+        return parsedFallback;
+      }
+      
+      return null;
+    }
+
+    function calculateMean(arr) {
+      if (arr.length === 0) return 0;
+      return arr.reduce((sum, val) => sum + val, 0) / arr.length;
+    }
+
+    function calculateSD(arr, mean) {
+      if (arr.length <= 1) return 0;
+      let sumOfSquares = arr.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0);
+      return Math.sqrt(sumOfSquares / (arr.length - 1));
+    }
+
+    function parseAge(ageVal) {
+      if (!ageVal) return 0;
+      let ageStr = String(ageVal).trim();
+      let matchYear = ageStr.match(/(\d+)\s*ปี/);
+      if (matchYear) return parseInt(matchYear[1]);
+      let matchFirst = ageStr.match(/(\d+)/);
+      if (matchFirst) return parseInt(matchFirst[1]);
+      return 0;
+    }
+
+    function buildMasterPatients(rawData) {
+      let hnGroups = {};
+      rawData.forEach(row => {
+        let hn = row['HN.'] || row['HN'] || row['hn'];
+        if (!hn) return;
+        hn = String(hn).trim();
+        if (!hnGroups[hn]) hnGroups[hn] = [];
+        hnGroups[hn].push(row);
+      });
+
+      let master = [];
+      for (let hn in hnGroups) {
+        let visits = hnGroups[hn];
+        let latest = visits[visits.length - 1]; 
+
+        let patient = {
+          hn: hn,
+          sex: getValidVal(visits, ['เพศ']),
+          age: getValidVal(visits, ['อายุ']),
+          address: getValidVal(visits, ['ที่อยู่']),
+          disease: getValidVal(visits, ['โรคประจำตัว']),
+          education: getValidVal(visits, ['การศึกษา']),
+          occupation: getValidVal(visits, ['อาชีพ']),
+          readiness: getValidVal(visits, ['ความพร้อม']),
+          intention: getValidVal(visits, ['ความตั้งใจ']),
+          
+          weight: parseFloat(latest['น้ำหนัก']) || 0,
+          height: parseFloat(latest['ส่วนสูง']) || 0,
+          bmi: parseFloat(latest['BMI']) || 0,
+          bp: latest['BP'] || latest['ความดัน'] || '',
+          waist: parseFloat(latest['เอว'] || latest['รอบเอว']) || 0,
+          
+          armL: parseFloat(latest['กล้ามเนื้อแขนซ้าย']) || 0,
+          armR: parseFloat(latest['กล้ามเนื้อแขนขวา']) || 0,
+          legL: parseFloat(latest['กล้ามเนื้อขาซ้าย']) || 0,
+          legR: parseFloat(latest['กล้ามเนื้อขาขวา']) || 0,
+          totalMuscle: parseFloat(latest['มวลรวมกล้ามเนื้อ']) || 0,
+          fatMass: parseFloat(latest['Fat MASS']) || 0,
+          fatPct: parseFloat(latest['FAT %']) || 0,
+          vFat: parseFloat(latest['V Fat']) || 0,
+
+          fbs: parseFloat(latest['FBS']) || 0,
+          hba1c: parseFloat(latest['HbA1c']) || 0,
+          chol: parseFloat(latest['Chol']) || 0,
+          tg: parseFloat(latest['Tg']) || 0,
+          hdl: parseFloat(latest['HDL']) || 0,
+          ldl: parseFloat(latest['LDL']) || 0,
+          cr: parseFloat(latest['Cr']) || 0,
+          egfr: parseFloat(latest['eGFR']) || 0,
+
+          firstWeight: parseFloat(visits[0]['น้ำหนัก']) || 0,
+          lastWeight: parseFloat(latest['น้ำหนัก']) || 0,
+          visitCount: visits.length
+        };
+        master.push(patient);
+      }
+      return master;
+    }
+
+    // ================= 4. DASHBOARD LOGIC =================
+    function renderDashboard() {
+      const filter = document.getElementById('clinicDayFilter').value;
+      let data = globalRawData;
+      if (filter !== "All") data = globalRawData.filter(d => d.sheetSource === filter);
+
+      masterPatients = buildMasterPatients(data);
+
+      let male = masterPatients.filter(p => p.sex === 'ชาย' || p.sex === '1').length;
+      let female = masterPatients.filter(p => p.sex === 'หญิง' || p.sex === '2').length;
+      let normalBmiCount = masterPatients.filter(p => p.bmi > 0 && p.bmi < 23).length;
+
+      document.getElementById('totalPatients').innerText = masterPatients.length;
+      document.getElementById('totalMale').innerText = male;
+      document.getElementById('totalFemale').innerText = female;
+      document.getElementById('totalNormalBmi').innerText = normalBmiCount;
+
+      drawChart('genderChart', 'pie', ['เพศชาย', 'เพศหญิง'], [male, female], ['#4e73df', '#e83e8c'], 'สัดส่วนเพศ');
+
+      let ageGroups = {'< 30 ปี': 0, '31-40 ปี': 0, '41-50 ปี': 0, '51-60 ปี': 0, '> 60 ปี': 0};
+      masterPatients.forEach(p => {
+        let age = parseAge(p.age);
+        if(age > 0) {
+          if(age < 30) ageGroups['< 30 ปี']++; 
+          else if(age <= 40) ageGroups['31-40 ปี']++;
+          else if(age <= 50) ageGroups['41-50 ปี']++; 
+          else if(age <= 60) ageGroups['51-60 ปี']++; 
+          else ageGroups['> 60 ปี']++;
+        }
+      });
+      drawChart('ageChart', 'bar', Object.keys(ageGroups), Object.values(ageGroups), ['#36b9cc'], 'กลุ่มอายุ (ปี)');
+
+      let diseases = {'DM':0, 'HT':0, 'DLP':0, 'Obesity':0, 'IFG':0};
+      masterPatients.forEach(p => {
+        let str = String(p.disease).toLowerCase();
+        if(str.includes('dm') || str.includes('เบาหวาน')) diseases['DM']++;
+        if(str.includes('ht') || str.includes('ความดัน')) diseases['HT']++;
+        if(str.includes('dlp') || str.includes('ไขมัน')) diseases['DLP']++;
+        if(str.includes('obesity') || str.includes('อ้วน')) diseases['Obesity']++;
+        if(str.includes('ifg')) diseases['IFG']++;
+      });
+      drawChart('diseaseChart', 'bar', Object.keys(diseases), Object.values(diseases), ['#e74a3b'], 'โรคประจำตัว 5 กลุ่มหลัก');
+
+      let bmiGroups = {'< 23': 0, '23-24.9': 0, '25-29.9': 0, '>= 30': 0, 'ไม่มีข้อมูล': 0};
+      masterPatients.forEach(p => {
+        let b = p.bmi;
+        if(b === 0) bmiGroups['ไม่มีข้อมูล']++; else if(b < 23) bmiGroups['< 23']++;
+        else if(b < 25) bmiGroups['23-24.9']++; else if(b < 30) bmiGroups['25-29.9']++; else bmiGroups['>= 30']++;
+      });
+      drawChart('bmiChart', 'doughnut', Object.keys(bmiGroups), Object.values(bmiGroups), ['#1cc88a', '#f6c23e', '#fd7e14', '#e74a3b', '#eaecf4'], 'ดัชนีมวลกาย (BMI)');
+
+      let bpGroups = {'< 140/90': 0, '>= 140/90': 0, 'ไม่มีข้อมูล': 0};
+      masterPatients.forEach(p => {
+        let bpStr = p.bp;
+        if(!bpStr || bpStr === '-' || bpStr === '99') { bpGroups['ไม่มีข้อมูล']++; return; }
+        let parts = bpStr.split('/');
+        if(parts.length === 2) {
+          let sys = parseInt(parts[0]), dia = parseInt(parts[1]);
+          if(sys > 0 && dia > 0) { if(sys < 140 && dia < 90) bpGroups['< 140/90']++; else bpGroups['>= 140/90']++; } 
+          else bpGroups['ไม่มีข้อมูล']++;
+        } else bpGroups['ไม่มีข้อมูล']++;
+      });
+      drawChart('bpChart', 'doughnut', Object.keys(bpGroups), Object.values(bpGroups), ['#1cc88a', '#e74a3b', '#eaecf4'], 'ความดันโลหิต (BP)');
+
+      let wMale = {'< 90 ซม.': 0, '>= 90 ซม.': 0, 'ไม่มีข้อมูล': 0}; let wFemale = {'< 80 ซม.': 0, '>= 80 ซม.': 0, 'ไม่มีข้อมูล': 0};
+      masterPatients.forEach(p => {
+        let w = p.waist; let isMale = (p.sex === 'ชาย' || p.sex === '1'); let isFemale = (p.sex === 'หญิง' || p.sex === '2');
+        if(w === 0) { if(isMale) wMale['ไม่มีข้อมูล']++; if(isFemale) wFemale['ไม่มีข้อมูล']++; } 
+        else {
+          if(isMale) { if(w < 90) wMale['< 90 ซม.']++; else wMale['>= 90 ซม.']++; }
+          if(isFemale) { if(w < 80) wFemale['< 80 ซม.']++; else wFemale['>= 80 ซม.']++; }
+        }
+      });
+      drawChart('waistMaleChart', 'pie', Object.keys(wMale), Object.values(wMale), ['#1cc88a', '#e74a3b', '#eaecf4'], 'รอบเอว (ชาย)');
+      drawChart('waistFemaleChart', 'pie', Object.keys(wFemale), Object.values(wFemale), ['#1cc88a', '#e74a3b', '#eaecf4'], 'รอบเอว (หญิง)');
+
+      let edu = getTopCategories(masterPatients, 'education', 5); let occ = getTopCategories(masterPatients, 'occupation', 5);
+      drawChart('educationChart', 'bar', Object.keys(edu), Object.values(edu), ['#858796'], 'ระดับการศึกษา (Top 5)');
+      drawChart('occupationChart', 'bar', Object.keys(occ), Object.values(occ), ['#f6c23e'], 'อาชีพ (Top 5)');
+
+      let scoresX = ['1','2','3','4','5','6','7','8','9','10'];
+      let readyData = Array(10).fill(0); let intentData = Array(10).fill(0);
+      masterPatients.forEach(p => {
+        let r = parseInt(String(p.readiness).replace(/[^0-9]/g, '')); let i = parseInt(String(p.intention).replace(/[^0-9]/g, ''));
+        if(r >= 1 && r <= 10) readyData[r-1]++; if(i >= 1 && i <= 10) intentData[i-1]++;
+      });
+      drawDoubleBarChart('scoreChart', scoresX, readyData, intentData, 'ความพร้อม', 'ความตั้งใจ', 'คะแนนความพร้อม / ตั้งใจ');
+
+      drawLabChart('fbsChart', masterPatients, 'fbs', 130, '< 130', '>= 130', 'Lab: FBS');
+      drawLabChart('hba1cChart', masterPatients, 'hba1c', 7, '< 7', '>= 7', 'Lab: HbA1c');
+      drawLabChart('cholChart', masterPatients, 'chol', 200, '< 200', '>= 200', 'Lab: Chol');
+      drawLabChart('tgChart', masterPatients, 'tg', 150, '< 150', '>= 150', 'Lab: Tg');
+      drawLabChart('hdlChart', masterPatients, 'hdl', 40, '< 40', '>= 40', 'Lab: HDL'); 
+      drawLabChart('ldlChart', masterPatients, 'ldl', 100, '< 100', '>= 100', 'Lab: LDL');
+      drawLabChart('egfrChart', masterPatients, 'egfr', 90, '< 90', '>= 90', 'Lab: eGFR');
+    }
+
+    // ================= 5. SEARCH & EXPORT LOGIC =================
+    
+    // ฟังก์ชันค้นหาคำนำหน้าและชื่อ-สกุลแบบสแกนทุก Visit เพื่อนำคำที่ได้รับการแก้ไขมาแสดงผล
+    function extractFullNameFromVisits(visits) {
+      for (let row of visits) {
+        let t = String(row['คำนำหน้าชื่อ'] || row['คำนำหน้า'] || row['คำนำหน้าชื่อ/ยศ'] || '').trim();
+        let fName = String(row['ชื่อ'] || row['ชื่อจริง'] || '').trim();
+        let lName = String(row['นามสกุล'] || row['สกุล'] || '').trim();
+        
+        let cleanT = (t !== '-' && t !== '99') ? t : '';
+        let cleanF = (fName !== '-' && fName !== '99') ? fName : '';
+        let cleanL = (lName !== '-' && lName !== '99') ? lName : '';
+        
+        if (cleanF) {
+          return `${cleanT} ${cleanF} ${cleanL}`.trim().replace(/\s+/g, ' ');
+        }
+      }
+      
+      // ดึงสัดส่วน 'ชื่อ - สกุล' ร่วมหากไม่พบแบบแยกคอลัมน์
+      for (let row of visits) {
+        let fullStr = String(row['ชื่อ - สกุล'] || row['ชื่อ-สกุล'] || '').trim();
+        if (fullStr && fullStr !== '-' && fullStr !== '99' && !['นาย', 'นาง', 'นางสาว'].includes(fullStr)) {
+          return fullStr;
+        }
+      }
+      return '-';
+    }
+
+    function searchPatient() {
+      const hn = document.getElementById('searchHN').value.trim();
+      const pData = globalRawData.filter(d => {
+        let h = String(d['HN.'] || d['HN'] || d['hn']).trim();
+        return h === hn;
+      });
+      
+      if(pData.length === 0) return alert('ไม่พบข้อมูลคนไข้รหัสนี้ โปรดตรวจสอบ HN อีกครั้ง');
+
+      // ดึงข้อมูลประชากรโดยการสแกนหาจากทุก Visit ของคนไข้ (ป้องกันกรณีแถวล่าสุดว่างเว้นการกรอกข้อมูลส่วนตัว)
+      let noDpac = getValidVal(pData, ['No.DPAC', 'No.Dpac', 'no.dpac', 'No.DPAC วันจันทร์', 'No.Dpac วันศุกร์']);
+      if (!noDpac) noDpac = '-';
+      
+      let fullName = extractFullNameFromVisits(pData);
+      
+      let phone = getValidVal(pData, ['เบอร์โทร', 'เบอร์โทรศัพท์', 'เบอร์โทร.', 'โทร']);
+      if (!phone) phone = '-';
+      
+      let birthday = getValidVal(pData, ['วันเดือนปีเกิด', 'วันเกิด', 'วัน/เดือน/ปี เกิด']);
+      if (birthday && birthday !== '-') {
+        birthday = formatToThaiDateString(birthday);
+      } else {
+        birthday = '-';
+      }
+      
+      let age = getValidVal(pData, ['อายุ', 'อายุ (ปี)']);
+      if (!age) age = '-';
+      
+      let gender = getValidVal(pData, ['เพศ']);
+      if (!gender) gender = '-';
+      
+      let address = getValidVal(pData, ['ที่อยู่', 'ที่อยู่ปัจจุบัน', 'อำเภอ']);
+      if (!address) address = '-';
+      
+      let occupation = getValidVal(pData, ['อาชีพ']);
+      if (!occupation) occupation = '-';
+      
+      let disease = getValidVal(pData, ['โรคประจำตัว']);
+      if (!disease) disease = '-';
+
+      // พ่น UI 9 รายการลงในระบบ Grid สวยงามสไตล์ looker studio
+      let infoHTML = `
+        <div class="row g-3">
+          <div class="col-md-4 col-sm-6">
+            <div class="profile-item shadow-sm">
+              <span class="profile-label"><i class="bi bi-tag-fill"></i> No.DPAC</span>
+              <span class="profile-value">${noDpac}</span>
+            </div>
+          </div>
+          <div class="col-md-4 col-sm-6">
+            <div class="profile-item shadow-sm">
+              <span class="profile-label"><i class="bi bi-person-circle"></i> ชื่อ-สกุล</span>
+              <span class="profile-value">${fullName}</span>
+            </div>
+          </div>
+          <div class="col-md-4 col-sm-6">
+            <div class="profile-item shadow-sm">
+              <span class="profile-label"><i class="bi bi-telephone-fill"></i> เบอร์โทร</span>
+              <span class="profile-value">${phone}</span>
+            </div>
+          </div>
+          <div class="col-md-4 col-sm-6">
+            <div class="profile-item shadow-sm">
+              <span class="profile-label"><i class="bi bi-calendar-event-fill"></i> วันเดือนปีเกิด</span>
+              <span class="profile-value">${birthday}</span>
+            </div>
+          </div>
+          <div class="col-md-4 col-sm-6">
+            <div class="profile-item shadow-sm">
+              <span class="profile-label"><i class="bi bi-hourglass-split"></i> อายุ</span>
+              <span class="profile-value">${age}</span>
+            </div>
+          </div>
+          <div class="col-md-4 col-sm-6">
+            <div class="profile-item shadow-sm">
+              <span class="profile-label"><i class="bi bi-gender-ambiguous"></i> เพศ</span>
+              <span class="profile-value">${gender}</span>
+            </div>
+          </div>
+          <div class="col-md-4 col-sm-6">
+            <div class="profile-item shadow-sm">
+              <span class="profile-label"><i class="bi bi-geo-alt-fill"></i> ที่อยู่</span>
+              <span class="profile-value">${address}</span>
+            </div>
+          </div>
+          <div class="col-md-4 col-sm-6">
+            <div class="profile-item shadow-sm">
+              <span class="profile-label"><i class="bi bi-briefcase-fill"></i> อาชีพ</span>
+              <span class="profile-value">${occupation}</span>
+            </div>
+          </div>
+          <div class="col-md-4 col-sm-6">
+            <div class="profile-item shadow-sm">
+              <span class="profile-label"><i class="bi bi-activity"></i> โรคประจำตัว</span>
+              <span class="profile-value">${disease}</span>
+            </div>
+          </div>
+        </div>
+      `;
+      document.getElementById('latestInfo').innerHTML = infoHTML;
+
+      // รายการคอลัมน์ประวัติการมารับบริการที่ต้องการให้แสดง (ตามหัวข้อที่ 2 เจาะจง)
+      const displayColumns = [
+        { label: 'วันที่มาคลินิก', keys: ['วันที่มาคลินิก', 'วันที่มา'], format: formatToThaiDateString },
+        { label: 'น้ำหนัก (กก.)', keys: ['น้ำหนัก', 'น้ำหนัก (กก.)'] },
+        { label: 'ส่วนสูง (ซม.)', keys: ['ส่วนสูง', 'ส่วนสูง (ซม.)'] },
+        { label: 'BMI', keys: ['BMI'] },
+        { label: 'BP (ความดัน)', keys: ['BP', 'ความดัน', 'ความดันโลหิต'] },
+        { label: 'P (ชีพจร)', keys: ['P', 'ชีพจร', 'Pulse', 'ชีพจร (P)', 'ชีพจร (ครั้ง/นาที)'] },
+        { label: 'รอบเอว (ซม.)', keys: ['เอว', 'รอบเอว', 'เอว (ซม.)'] },
+        { label: 'สะโพก (ซม.)', keys: ['สะโพก', 'รอบสะโพก', 'สะโพก (ซม.)'] },
+        { label: 'WHR', keys: ['WHR', 'whr'] },
+        { label: 'FBS', keys: ['FBS'] },
+        { label: 'HbA1c (%)', keys: ['HbA1c', 'HbA1C'] }
+      ];
+
+      // แสดงส่วนหัวตาราง
+      document.getElementById('historyHead').innerHTML = `<tr>${displayColumns.map(col => `<th>${col.label}</th>`).join('')}</tr>`;
+      
+      // ดึงประวัติจากใหม่สุดไปเก่าสุด
+      let reversedData = [...pData].reverse();
+      document.getElementById('historyBody').innerHTML = reversedData.map(row => {
+        let rowHTML = displayColumns.map(col => {
+          let val = getValByKeys(row, col.keys);
+          if (col.format) {
+            val = col.format(val);
+          }
+          return `<td>${val}</td>`;
+        }).join('');
+        return `<tr>${rowHTML}</tr>`;
+      }).join('');
+
+      document.getElementById('patientProfile').classList.remove('d-none');
+    }
+
+    // ฟังก์ชันย่อยสำหรับสแกนหาคำนำหน้าและรวมชื่อสกุลได้อย่างมั่นใจ
+    function extractFullName(row) {
+      let t = String(row['คำนำหน้าชื่อ'] || row['คำนำหน้า'] || row['คำนำหน้าชื่อ/ยศ'] || '').trim();
+      let fName = String(row['ชื่อ'] || row['ชื่อจริง'] || '').trim();
+      let lName = String(row['นามสกุล'] || row['สกุล'] || '').trim();
+      
+      let cleanT = (t !== '-' && t !== '99') ? t : '';
+      let cleanF = (fName !== '-' && fName !== '99') ? fName : '';
+      let cleanL = (lName !== '-' && lName !== '99') ? lName : '';
+
+      if (cleanF) {
+        return `${cleanT} ${cleanF} ${cleanL}`.trim().replace(/\s+/g, ' ');
+      }
+      return String(row['ชื่อ - สกุล'] || row['ชื่อ-สกุล'] || '-').trim();
+    }
+
+    // ค้นหาค่าแบบไดนามิกจากรายการคีย์
+    function getValByKeys(row, keys) {
+      for (let k of keys) {
+        if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') {
+          return String(row[k]).trim();
+        }
+      }
+      return '-';
+    }
+
+    function exportExcel() {
+      if(masterPatients.length === 0) return alert('ไม่มีข้อมูล');
+      const ws = XLSX.utils.json_to_sheet(masterPatients);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Patient_Master");
+      XLSX.writeFile(wb, "DPAC_Report.xlsx");
+    }
+
+    // ================= 6. GENERATE PROFESSIONAL CUSTOM REPORT =================
+    let currentCustomReportCohort = []; 
+
+    function generateCustomReport() {
+      let mode = document.getElementById('repFilterMode').value;
+      let filteredRaw = [];
+      let periodLabel = "";
+
+      if (mode === 'range') {
+        let sStr = document.getElementById('repStartDate').value;
+        let eStr = document.getElementById('repEndDate').value;
+        if (!sStr || !eStr) return alert("กรุณาระบุช่วงวันที่เริ่มต้นและสิ้นสุด");
+        
+        let sDate = new Date(sStr);
+        let eDate = new Date(eStr);
+        eDate.setHours(23, 59, 59);
+        
+        filteredRaw = globalRawData.filter(row => {
+          let rowDate = parseThaiDate(row['วันที่มาคลินิก'] || row['วันที่มา']);
+          return rowDate && rowDate >= sDate && rowDate <= eDate;
+        });
+        
+        let sThai = sDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+        let eThai = eDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+        periodLabel = `${sThai} - ${eThai}`;
+
+      } else if (mode === 'month') {
+        let mStr = document.getElementById('repMonthSelect').value;
+        if (!mStr) return alert("กรุณาเลือกเดือน");
+        
+        let [y, m] = mStr.split('-').map(Number); 
+        filteredRaw = globalRawData.filter(row => {
+          let rowDate = parseThaiDate(row['วันที่มาคลินิก'] || row['วันที่มา']);
+          return rowDate && rowDate.getFullYear() === y && rowDate.getMonth() === (m - 1);
+        });
+        
+        let dummyDate = new Date(y, m - 1, 1);
+        periodLabel = dummyDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long' });
+
+      } else if (mode === 'year') {
+        let yTh = parseInt(document.getElementById('repYearSelect').value);
+        let yEn = yTh - 543;
+        
+        filteredRaw = globalRawData.filter(row => {
+          let rowDate = parseThaiDate(row['วันที่มาคลินิก'] || row['วันที่มา']);
+          return rowDate && rowDate.getFullYear() === yEn;
+        });
+        periodLabel = `ปี พ.ศ. ${yTh}`;
+      }
+
+      if (filteredRaw.length === 0) {
+        document.getElementById('customReportResult').classList.add('d-none');
+        return alert("ไม่พบข้อมูลผู้ป่วยเข้าเกณฑ์ในกรอบเวลาที่เลือก");
+      }
+
+      // ยุบตัวตน: 1 HN = 1 คน
+      let customMaster = buildMasterPatients(filteredRaw);
+      currentCustomReportCohort = customMaster; 
+
+      document.getElementById('reportPatientCount').innerText = customMaster.length;
+      document.getElementById('reportActivePeriod').innerText = periodLabel;
+
+      // --- 1. เพศ ---
+      let total = customMaster.length;
+      let male = customMaster.filter(p => p.sex === 'ชาย' || p.sex === '1').length;
+      let female = customMaster.filter(p => p.sex === 'หญิง' || p.sex === '2').length;
+      
+      document.getElementById('repGenderMale').innerText = `${male} คน (${((male/total)*100).toFixed(1)}%)`;
+      document.getElementById('repGenderFemale').innerText = `${female} คน (${((female/total)*100).toFixed(1)}%)`;
+
+      // --- 2. ที่อยู่ ---
+let mGroup = 0; // อำเภอเมือง
+let oGroup = 0; // อำเภออื่นๆ ในนครราชสีมา
+let pGroup = 0; // ต่างจังหวัด
+
+// รายชื่ออำเภอในนครราชสีมา (ยกเว้นอำเภอเมือง)
+const koratDistricts = [
+  'แก้งสนามนาง', 'ขามทะเลสอ', 'ขามสะแกแสง', 'คง', 'ครบุรี', 'เฉลิมพระเกียรติ', 
+  'โชคชัย', 'ชุมพวง', 'ด่านขุนทด', 'เทพารักษ์', 'โนนไทย', 'โนนสูง', 'โนนแดง', 
+  'บัวลาย', 'บัวใหญ่', 'บ้านเหลื่อม', 'ประทาย', 'ปักธงชัย', 'ปากช่อง', 'พระทองคำ', 
+  'พิมาย', 'เมืองยาง', 'ลำทะเมนชัย', 'วังน้ำเขียว', 'เสิงสาง', 'สีคิ้ว', 'สีดา', 
+  'สูงเนิน', 'หนองบุญมาก', 'ห้วยแถลง', 'จักราช'
+];
+
+customMaster.forEach(p => {
+  let addr = String(p.address || '').trim();
+  
+  // 1. ตรวจสอบ "ต่างจังหวัด"
+  // หากในชื่อที่อยู่ระบุจังหวัดอื่นที่ไม่ใช่ นครราชสีมา หรือมีคำว่า "ต่างจังหวัด" ให้ถือเป็นต่างจังหวัด
+  const nonKoratProvinces = ['ชัยภูมิ', 'บุรีรัมย์', 'ขอนแก่น', 'กรุงเทพ', 'ปทุมธานี', 'นนทบุรี', 'สมุทร', 'ชลบุรี', 'สุรินทร์', 'ศรีสะเกษ', 'อุบลราชธานี'];
+  let isOtherProvince = nonKoratProvinces.some(prov => addr.includes(prov)) || addr.includes("ต่างจังหวัด");
+
+  if (isOtherProvince) {
+    pGroup++;
+  } 
+  // 2. ตรวจสอบ "อำเภอเมือง"
+  else if (addr.includes("เมือง")) {
+    mGroup++;
+  } 
+  // 3. ตรวจสอบ "อำเภออื่นๆ ในนครราชสีมา"
+  else {
+    let isKoratDistrict = koratDistricts.some(dist => addr.includes(dist));
+    if (isKoratDistrict) {
+      oGroup++;
+    } else {
+      // กรณีไม่ระบุชัดเจน ให้จัดอยู่ในกลุ่มอำเภออื่นๆ หรือกลุ่มข้อมูลว่าง
+      oGroup++;
+    }
+  }
+});
+
+document.getElementById('repAddrMueang').innerText = `${mGroup} คน (${total > 0 ? ((mGroup/total)*100).toFixed(1) : 0.0}%)`;
+document.getElementById('repAddrOutside').innerText = `${oGroup} คน (${total > 0 ? ((oGroup/total)*100).toFixed(1) : 0.0}%)`;
+document.getElementById('repAddrOther').innerText = `${pGroup} คน (${total > 0 ? ((pGroup/total)*100).toFixed(1) : 0.0}%)`;
+
+      // --- 3. น้ำหนัก & 4. ส่วนสูง ---
+      let weights = customMaster.map(p => p.weight).filter(w => w > 0);
+      let heights = customMaster.map(p => p.height).filter(h => h > 0);
+
+      if (weights.length > 0) {
+        let wMin = Math.min(...weights);
+        let wMax = Math.max(...weights);
+        let wMean = calculateMean(weights);
+        let wSD = calculateSD(weights, wMean);
+        document.getElementById('repWeightMin').innerText = wMin.toFixed(1);
+        document.getElementById('repWeightMax').innerText = wMax.toFixed(1);
+        document.getElementById('repWeightMean').innerText = wMean.toFixed(2);
+        document.getElementById('repWeightSD').innerText = wSD.toFixed(2);
+      } else {
+        document.getElementById('repWeightMin').innerText = "-";
+        document.getElementById('repWeightMax').innerText = "-";
+        document.getElementById('repWeightMean').innerText = "-";
+        document.getElementById('repWeightSD').innerText = "-";
+      }
+
+      if (heights.length > 0) {
+        let hMin = Math.min(...heights);
+        let hMax = Math.max(...heights);
+        let hMean = calculateMean(heights);
+        let hSD = calculateSD(heights, hMean);
+        document.getElementById('repHeightMin').innerText = hMin.toFixed(0);
+        document.getElementById('repHeightMax').innerText = hMax.toFixed(0);
+        document.getElementById('repHeightMean').innerText = hMean.toFixed(2);
+        document.getElementById('repHeightSD').innerText = hSD.toFixed(2);
+      } else {
+        document.getElementById('repHeightMin').innerText = "-";
+        document.getElementById('repHeightMax').innerText = "-";
+        document.getElementById('repHeightMean').innerText = "-";
+        document.getElementById('repHeightSD').innerText = "-";
+      }
+
+      // --- 5. ค่าดัชนีมวลกาย BMI ---
+      let b1 = 0, b2 = 0, b3 = 0, b4 = 0;
+      customMaster.forEach(p => {
+        let b = p.bmi;
+        if (b >= 23.0 && b < 25.0) b1++;
+        else if (b >= 25.0 && b < 30.0) b2++;
+        else if (b >= 30.0 && b < 35.0) b3++;
+        else if (b >= 35.0) b4++;
+      });
+      document.getElementById('repBmiOverweight').innerText = `${b1} คน (${((b1/total)*100).toFixed(1)}%)`;
+      document.getElementById('repBmiObese1').innerText = `${b2} คน (${((b2/total)*100).toFixed(1)}%)`;
+      document.getElementById('repBmiObese2').innerText = `${b3} คน (${((b3/total)*100).toFixed(1)}%)`;
+      document.getElementById('repBmiObeseExtreme').innerText = `${b4} คน (${((b4/total)*100).toFixed(1)}%)`;
+
+      // --- 6. ค่าความดันโลหิต ---
+      let sbpNorm = 0, sbpHigh = 0;
+      let dbpNorm = 0, dbpHigh = 0;
+      let bpTotal = 0;
+
+      customMaster.forEach(p => {
+        let bpStr = String(p.bp).trim();
+        if (bpStr && bpStr.includes('/')) {
+          let parts = bpStr.split('/');
+          let sbp = parseFloat(parts[0]);
+          let dbp = parseFloat(parts[1]);
+          if (sbp > 0 && dbp > 0) {
+            bpTotal++;
+            if (sbp < 130) sbpNorm++; else sbpHigh++;
+            if (dbp < 80) dbpNorm++; else dbpHigh++;
+          }
+        }
+      });
+
+      if (bpTotal > 0) {
+        document.getElementById('repSbpNormal').innerText = `${sbpNorm} คน (${((sbpNorm/bpTotal)*100).toFixed(1)}%)`;
+        document.getElementById('repSbpHigh').innerText = `${sbpHigh} คน (${((sbpHigh/bpTotal)*100).toFixed(1)}%)`;
+        document.getElementById('repDbpNormal').innerText = `${dbpNorm} คน (${((dbpNorm/bpTotal)*100).toFixed(1)}%)`;
+        document.getElementById('repDbpHigh').innerText = `${dbpHigh} คน (${((dbpHigh/bpTotal)*100).toFixed(1)}%)`;
+      } else {
+        document.getElementById('repSbpNormal').innerText = "0 คน (0.0%)";
+        document.getElementById('repSbpHigh').innerText = "0 คน (0.0%)";
+        document.getElementById('repDbpNormal').innerText = "0 คน (0.0%)";
+        document.getElementById('repDbpHigh').innerText = "0 คน (0.0%)";
+      }
+
+      // --- 7. ผลการวัด BIA ---
+      function fillBiaRow(key, cellIdMean, cellIdCount) {
+        let vals = customMaster.map(p => p[key]).filter(v => v > 0);
+        if (vals.length > 0) {
+          let mean = calculateMean(vals);
+          document.getElementById(cellIdMean).innerText = mean.toFixed(2);
+          document.getElementById(cellIdCount).innerText = `${vals.length} คน (${((vals.length/total)*100).toFixed(1)}%)`;
+          return { mean, vals };
+        } else {
+          document.getElementById(cellIdMean).innerText = "-";
+          document.getElementById(cellIdCount).innerText = "0 คน (0.0%)";
+          return { mean: 0, vals: [] };
+        }
+      }
+
+      fillBiaRow('armL', 'repMuscleArmL', 'repMuscleArmLCount');
+      fillBiaRow('armR', 'repMuscleArmR', 'repMuscleArmRCount');
+      fillBiaRow('legL', 'repMuscleLegL', 'repMuscleLegLCount');
+      fillBiaRow('legR', 'repMuscleLegR', 'repMuscleLegRCount');
+      
+      let totM = fillBiaRow('totalMuscle', 'repMuscleTotalMean', 'repMuscleTotalCount');
+      if (totM.vals.length > 1) {
+        let sd = calculateSD(totM.vals, totM.mean);
+        document.getElementById('repMuscleTotalSD').innerText = sd.toFixed(2);
+      } else {
+        document.getElementById('repMuscleTotalSD').innerText = "-";
+      }
+
+      let fMassVals = customMaster.map(p => p.fatMass).filter(v => v > 0);
+      if (fMassVals.length > 0) {
+        let mean = calculateMean(fMassVals);
+        let sd = calculateSD(fMassVals, mean);
+        document.getElementById('repFatMassMeanSD').innerText = `${mean.toFixed(2)} ± ${sd.toFixed(2)}`;
+        document.getElementById('repFatMassCount').innerText = `มีข้อมูล ${fMassVals.length} คน (${((fMassVals.length/total)*100).toFixed(1)}%)`;
+      } else {
+        document.getElementById('repFatMassMeanSD').innerText = "-";
+        document.getElementById('repFatMassCount').innerText = "";
+      }
+
+      let fPctVals = customMaster.map(p => p.fatPct).filter(v => v > 0);
+      if (fPctVals.length > 0) {
+        let mean = calculateMean(fPctVals);
+        let sd = calculateSD(fPctVals, mean);
+        document.getElementById('repFatPctMeanSD').innerText = `${mean.toFixed(2)} ± ${sd.toFixed(2)}%`;
+        document.getElementById('repFatPctCount').innerText = `มีข้อมูล ${fPctVals.length} คน (${((fPctVals.length/total)*100).toFixed(1)}%)`;
+      } else {
+        document.getElementById('repFatPctMeanSD').innerText = "-";
+        document.getElementById('repFatPctCount').innerText = "";
+      }
+
+      let vFatVals = customMaster.map(p => p.vFat).filter(v => v > 0);
+      if (vFatVals.length > 0) {
+        let mean = calculateMean(vFatVals);
+        let sd = calculateSD(vFatVals, mean);
+        document.getElementById('repVFatMeanSD').innerText = `${mean.toFixed(1)} ± ${sd.toFixed(1)}`;
+        document.getElementById('repVFatTotalCount').innerText = `มีข้อมูลวัดผล ${vFatVals.length} คน (${((vFatVals.length/total)*100).toFixed(1)}%)`;
+
+        let gNorm = 0, gWarn = 0, gRisk = 0;
+        vFatVals.forEach(v => {
+          if (v < 10) gNorm++;
+          else if (v <= 14) gWarn++;
+          else gRisk++;
+        });
+        document.getElementById('repVFatNormal').innerText = `${gNorm} คน (${((gNorm/vFatVals.length)*100).toFixed(1)}%)`;
+        document.getElementById('repVFatWarning').innerText = `${gWarn} คน (${((gWarn/vFatVals.length)*100).toFixed(1)}%)`;
+        document.getElementById('repVFatDanger').innerText = `${gRisk} คน (${((gRisk/vFatVals.length)*100).toFixed(1)}%)`;
+      } else {
+        document.getElementById('repVFatMeanSD').innerText = "-";
+        document.getElementById('repVFatTotalCount').innerText = "ไม่มีข้อมูล";
+        document.getElementById('repVFatNormal').innerText = "0 คน (0.0%)";
+        document.getElementById('repVFatWarning').innerText = "0 คน (0.0%)";
+        document.getElementById('repVFatDanger').innerText = "0 คน (0.0%)";
+      }
+
+      // --- 8. ผลการตรวจ LAB ---
+      function calcAndFillLab(key, rowPrefix) {
+        let vals = customMaster.map(p => p[key]).filter(v => v > 0);
+        let countCell = document.getElementById(rowPrefix + '_count');
+        let meanCell = document.getElementById(rowPrefix + '_mean');
+        let sdCell = document.getElementById(rowPrefix + '_sd');
+
+        if (vals.length > 0) {
+          let mean = calculateMean(vals);
+          let sd = calculateSD(vals, mean);
+          countCell.innerText = `${vals.length} คน (${((vals.length/total)*100).toFixed(1)}%)`;
+          meanCell.innerText = mean.toFixed(2);
+          sdCell.innerText = sd.toFixed(2);
+        } else {
+          countCell.innerText = "0 คน (0.0%)";
+          meanCell.innerText = "-";
+          sdCell.innerText = "-";
+        }
+      }
+
+      calcAndFillLab('fbs', 'repLabFBS');
+      calcAndFillLab('hba1c', 'repLabHbA1c');
+      calcAndFillLab('chol', 'repLabChol');
+      calcAndFillLab('tg', 'repLabTg');
+      calcAndFillLab('hdl', 'repLabHDL');
+      calcAndFillLab('ldl', 'repLabLDL');
+      calcAndFillLab('cr', 'repLabCr');
+      calcAndFillLab('egfr', 'repLabEGFR');
+
+      // --- 9. ผลการลดน้ำหนัก ---
+      let multiVisitCohort = customMaster.filter(p => p.visitCount >= 2 && p.firstWeight > 0 && p.lastWeight > 0);
+      document.getElementById('repLossCohortCount').innerText = multiVisitCohort.length;
+
+      if (multiVisitCohort.length > 0) {
+        let noChange = 0, gain = 0, l3 = 0, l3to5 = 0, l5to10 = 0, lG10 = 0;
+        let cTotal = multiVisitCohort.length;
+
+        multiVisitCohort.forEach(p => {
+          let diff = p.firstWeight - p.lastWeight; 
+          let pct = (diff / p.firstWeight) * 100;
+
+          if (Math.abs(diff) < 0.1) {
+            noChange++;
+          } else if (diff < 0) {
+            gain++; 
+          } else {
+            if (pct < 3.00) l3++;
+            else if (pct < 5.00) l3to5++;
+            else if (pct < 10.00) l5to10++;
+            else lG10++;
+          }
+        });
+
+        document.getElementById('repLossNoChange').innerText = `${noChange} คน (${((noChange/cTotal)*100).toFixed(1)}%)`;
+        document.getElementById('repLossGain').innerText = `${gain} คน (${((gain/cTotal)*100).toFixed(1)}%)`;
+        document.getElementById('repLossL3').innerText = `${l3} คน (${((l3/cTotal)*100).toFixed(1)}%)`;
+        document.getElementById('repLoss3to5').innerText = `${l3to5} คน (${((l3to5/cTotal)*100).toFixed(1)}%)`;
+        document.getElementById('repLoss5to10').innerText = `${l5to10} คน (${((l5to10/cTotal)*100).toFixed(1)}%)`;
+        document.getElementById('repLossG10').innerText = `${lG10} คน (${((lG10/cTotal)*100).toFixed(1)}%)`;
+      } else {
+        document.getElementById('repLossNoChange').innerText = "-";
+        document.getElementById('repLossGain').innerText = "-";
+        document.getElementById('repLossL3').innerText = "-";
+        document.getElementById('repLoss3to5').innerText = "-";
+        document.getElementById('repLoss5to10').innerText = "-";
+        document.getElementById('repLossG10').innerText = "-";
+      }
+
+      document.getElementById('customReportResult').classList.remove('d-none');
+    }
+
+    function exportCustomReportToExcel() {
+      if (currentCustomReportCohort.length === 0) return alert("ไม่มีข้อมูลสำหรับการดาวน์โหลด");
+      const ws = XLSX.utils.json_to_sheet(currentCustomReportCohort);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "DPAC_Cohort_Specific");
+      XLSX.writeFile(wb, "DPAC_Cohort_Specific_Report.xlsx");
+    }
+
+    // ================= HELPER FUNCTIONS FOR DRAWING CHARTS =================
+    function getTopCategories(data, key, limit) {
+      let counts = {};
+      data.forEach(item => {
+        let val = item[key] ? String(item[key]).trim() : 'ไม่ระบุ';
+        if(val !== '-' && val !== '' && val !== '99') counts[val] = (counts[val] || 0) + 1;
+      });
+      return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, limit).reduce((obj, [k, v]) => { obj[k] = v; return obj; }, {});
+    }
+
+    function drawChart(canvasId, type, labels, dataPoints, colors, titleText) {
+      if(charts[canvasId]) charts[canvasId].destroy();
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let displayLabels = labels;
+      if(type === 'pie' || type === 'doughnut') {
+        let total = dataPoints.reduce((a,b)=>a+b,0);
+        displayLabels = labels.map((l, i) => total > 0 ? `${l} (${((dataPoints[i]/total)*100).toFixed(1)}%)` : l);
+      }
+      charts[canvasId] = new Chart(ctx, {
+        type: type,
+        data: { labels: displayLabels, datasets: [{ label: 'จำนวนคน', data: dataPoints, backgroundColor: colors, borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: (type === 'pie' || type === 'doughnut'), position: 'bottom' }, title: { display: true, text: titleText, font: { family: "'Kanit', sans-serif", size: 15, weight: '600' } }, tooltip: customTooltip }, scales: (type === 'bar') ? { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { grid: { display: false } } } : {} }
+      });
+    }
+
+    function drawDoubleBarChart(canvasId, labels, data1, data2, label1, label2, titleText) {
+      if(charts[canvasId]) charts[canvasId].destroy();
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      charts[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: labels, datasets: [ { label: label1, data: data1, backgroundColor: '#4e73df' }, { label: label2, data: data2, backgroundColor: '#f6c23e' } ] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: customTooltip, title: { display: true, text: titleText, font: { family: "'Kanit', sans-serif", size: 15, weight: '600' } } }, scales: { y: { beginAtZero: true } } }
+      });
+    }
+
+    function drawLabChart(canvasId, data, key, threshold, labelGood, labelBad, titleText) {
+      let counts = {[labelGood]:0, [labelBad]:0, 'ไม่มีข้อมูล':0};
+      data.forEach(p => {
+        let val = p[key];
+        if(val === 0) counts['ไม่มีข้อมูล']++; else { if(val < threshold) counts[labelGood]++; else counts[labelBad]++; }
+      });
+      drawChart(canvasId, 'doughnut', Object.keys(counts), Object.values(counts), ['#1cc88a', '#e74a3b', '#eaecf4'], titleText);
+    }
+  </script>
+</body>
+</html>
